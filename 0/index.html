@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Project 0 – Becoming Friends with Your Camera</title>
+    <style>
+        body {
+            font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            max-width: 900px;
+            color: #222;
+            line-height: 1.6;
+        }
+        a {
+            color: #2c5aa0;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 28px;
+            margin-top: 30px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            margin-top: 50px;
+        }
+        p {
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        video {
+            max-width: 500px;
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            display: block;
+            margin: 20px auto 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .photo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .photo-item {
+            flex: 1 1 0;
+            min-width: 140px;
+            text-align: center;
+        }
+        .photo-item img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .photo-item p {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html">&larr; Back to main page</a>
+
+    <h1>Project 0: Becoming Friends with Your Camera</h1>
+
+    <h2>Part 1: Selfie: The Wrong Way vs. The Right Way</h2>
+    <p>As the camera zooms in and moves further from my face (0.5x to 5x), facial features
+       appear progressively more compressed and natural-looking. Wide-angle shots taken up
+       close (0.5x) exaggerate my nose and distort proportions, since the camera is close
+       enough that different parts of the face are at meaningfully different distances from
+       the lens.</p>
+
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/image0.5x.JPG" alt="0.5x zoom selfie">
+            <p>0.5x</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/image1x.JPG" alt="1x zoom selfie">
+            <p>1x</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/image2x.JPG" alt="2x zoom selfie">
+            <p>2x</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/image3x.JPG" alt="3x zoom selfie">
+            <p>3x</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/image4x.JPG" alt="4x zoom selfie">
+            <p>4x</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/image5x.JPG" alt="5x zoom selfie">
+            <p>5x</p>
+        </div>
+    </div>
+
+    <h2>Part 2: Architectural Perspective Compression</h2>
+    <p>The same effect shows up at building scale. Shot from far away with zoom, the facade
+       looks flattened and compressed, and parallel lines stay closer to parallel. Shot up close
+       without zoom, the same building shows much stronger perspective distortion, since the
+       near and far parts of the facade differ more in distance from the camera.</p>
+
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/building_far.JPG" alt="Building photographed from far away, zoomed in">
+            <p>Far away, zoomed in</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/building_near.JPG" alt="Building photographed up close, no zoom">
+            <p>Close up, no zoom</p>
+        </div>
+    </div>
+
+    <h2>Part 3: Dolly Zoom</h2>
+    <p>By physically moving the camera while zooming in the opposite direction, my subject
+       stays a constant size in frame while the background appears to stretch or compress, creating
+       the classic "Vertigo effect."</p>
+
+    <video controls>
+        <source src="./media/dollyzoom.mp4" type="video/mp4">
+        Your browser does not support this video format.
+    </video>
+
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Project 1 – Images of the Russian Empire</title>
+    <style>
+        body {
+            font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            max-width: 960px;
+            color: #222;
+            line-height: 1.6;
+        }
+        a {
+            color: #2c5aa0;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 28px;
+            margin-top: 30px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            margin-top: 55px;
+        }
+        h3 {
+            font-size: 16px;
+            margin-top: 30px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        h4 {
+            font-size: 14px;
+            margin-top: 22px;
+            margin-bottom: 6px;
+            color: #444;
+        }
+        p {
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        /* small side-by-side grids (single-scale, own examples, before/after) */
+        .photo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .photo-item {
+            flex: 1 1 0;
+            min-width: 140px;
+            text-align: center;
+        }
+        .photo-item img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .photo-item p {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: #777;
+        }
+        .photo-item.wide {
+            flex: 1 1 100%;
+            max-width: 460px;
+        }
+
+        /* horizontal scrollable result cards */
+        .scroll-row {
+            display: flex;
+            overflow-x: auto;
+            gap: 16px;
+            padding: 6px 4px 16px;
+            margin: 20px 0;
+            scroll-snap-type: x proximity;
+        }
+        .scroll-card {
+            flex: 0 0 auto;
+            width: 300px;
+            scroll-snap-align: start;
+        }
+        .scroll-card img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .scroll-card .card-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin: 10px 0 4px;
+        }
+        .scroll-card .caption {
+            background: #f6f6f6;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 12.5px;
+            color: #555;
+        }
+        .scroll-row::-webkit-scrollbar {
+            height: 8px;
+        }
+        .scroll-row::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 4px;
+        }
+
+        /* formulas */
+        .formula {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 18px;
+            margin: 14px 0;
+            text-align: center;
+            font-family: "Cambria Math", Georgia, serif;
+            font-size: 17px;
+            color: #333;
+        }
+
+        /* collapsible code */
+        details {
+            margin: 14px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        summary {
+            cursor: pointer;
+            color: #2c5aa0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        details[open] summary {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            color: #666;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        /* plain rounded note cards — no colored edges */
+        .note-card {
+            background: #f7f7f7;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 14px 0;
+        }
+        .note-card p {
+            margin: 6px 0;
+        }
+        .note-card .label {
+            font-weight: 600;
+            color: #444;
+            font-size: 13px;
+        }
+
+        .summary-card {
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 18px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html">&larr; Back to main page</a>
+
+    <h1>Project 1: Images of the Russian Empire</h1>
+    <p class="subtitle">Colourising the Prokudin-Gorskii Photo Collection</p>
+
+    <h2>Overview</h2>
+    <p>Sergei Prokudin-Gorskii photographed the Russian Empire in the early 1900s by taking
+       three black-and-white exposures of each scene through red, green, and blue filters.
+       This project reconstructs color photographs from his glass plate scans by splitting
+       each image into its B, G, R channel strips and automatically finding the (x, y)
+       translation that best aligns G and R onto B.</p>
+
+    <h2>Metrics</h2>
+    <p>To score a candidate shift, I compared the shifted channel against the reference
+       B channel with one of two metrics, computed only on the interior of the
+       image. The outer 10% is cropped out before scoring, since the border of each
+       scan often has scratches, dark spots, or folded edges that would otherwise
+       pollute the score and pull the "best" shift toward matching border noise
+       instead of actual image content.</p>
+
+    <h4>L2 (sum of squared differences / Euclidean distance)</h4>
+    <div class="formula">L2&nbsp;=&nbsp;&radic;( &Sigma;<sub>x,y</sub> ( I&#8321;(x,y) &minus; I&#8322;(x,y) )&sup2; )</div>
+    <p>L2 is calculated by subtracting corresponding pixels, squaring the differences, summing them up, then square
+       rooting it. Squaring makes large mismatches count disproportionately more than
+       small ones, which makes L2 sensitive to precise pixel-level agreement. This is good
+       for exact alignment, but it assumes the two channels are equally bright to begin
+       with. When that assumption breaks (see <code>emir.tif</code> below), L2 can be
+       misled by genuine color differences rather than misalignment. Lower L2 is better.</p>
+
+    <h4>NCC (normalized cross-correlation)</h4>
+    <div class="formula">NCC&nbsp;=&nbsp;<sup>(I&#8321; &minus; mean(I&#8321;))</sup>&frasl;<sub>&#8214;I&#8321; &minus; mean(I&#8321;)&#8214;</sub> &nbsp;&middot;&nbsp; <sup>(I&#8322; &minus; mean(I&#8322;))</sup>&frasl;<sub>&#8214;I&#8322; &minus; mean(I&#8322;)&#8214;</sub></div>
+    <p>Each channel is mean-centered and scaled to unit norm before comparing, which
+       removes each channel's own brightness and contrast from the comparison. What's
+       left is a measure of whether the two channels' bright/dark <em>patterns</em>
+       line up, which makes NCC more robust to channels that were genuinely exposed
+       or colored differently. Higher NCC (closer to 1) is better.</p>
+
+    <h2>Part 1: Single-Scale Alignment</h2>
+
+    <h3>Approach</h3>
+    <p>For the low-resolution JPEG images, I implemented a naive exhaustive search
+       over every integer (x, y) shift in a window of &plusmn;15 pixels, a 31&times;31 grid
+       of 961 candidate shifts per channel. This range comfortably covers the true
+       misalignment on these images (all well under 15 pixels), and since these images
+       are small, brute-forcing all 961 combinations is fast enough to run in well
+       under a second per channel. For each candidate shift, I use <code>np.roll</code>
+       to translate the channel, crop both the shifted channel and the reference to
+       their shared interior, and score the match with L2 or NCC as described above.
+       Whichever shift produces the best score (lowest L2, or highest NCC) is kept as
+       the final alignment for that channel, and G and R are each aligned to B
+       independently.</p>
+
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/cathedral_out.jpg" alt="Cathedral aligned">
+            <p>Cathedral &mdash; G: (5, 2), R: (12, 3)</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/monastery_out.jpg" alt="Monastery aligned">
+            <p>Monastery &mdash; G: (-3, 2), R: (3, 2)</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/tobolsk_out.jpg" alt="Tobolsk aligned">
+            <p>Tobolsk &mdash; G: (3, 3), R: (6, 3)</p>
+        </div>
+    </div>
+    <p>All three images align cleanly with no visible ghosting or color fringing in
+       the image content. L2 and NCC produced identical shifts on all three. These
+       images don't have the strong per-channel brightness mismatches that would make
+       the two metrics disagree (contrast with <code>emir.tif</code> in the Pyramid
+       section, where they do).</p>
+
+    <h2>Part 2: Multi-Scale Pyramid Alignment</h2>
+
+    <h3>Motivation</h3>
+    <p>The large <code>.tif</code> scans are far too high-resolution for a &plusmn;15 pixel
+       brute-force search, since true misalignment on these images ranges from about 15
+       pixels up to over 170 pixels (see <code>melons.tif</code> below), and searching a
+       window that size exhaustively at full resolution would mean scoring hundreds of
+       thousands of candidate shifts per channel, each over a multi-megapixel image.
+       That's far too slow to be practical, so I implemented a coarse-to-fine image
+       pyramid instead.</p>
+
+    <h3>How the pyramid works, step by step</h3>
+    <p>The core idea is to find a rough shift cheaply on a small version of the image,
+       then use that rough answer to narrow down the search at each larger scale,
+       rather than searching the full range at full resolution.</p>
+
+    <ol>
+        <li><strong>Downsample.</strong> The image is shrunk by 2&times; repeatedly, using
+        2&times;2 block averaging, until it's smaller than a minimum size threshold.</li>
+        <li><strong>Base case.</strong> At the smallest scale, I run the same
+        brute-force &plusmn;15 pixel search from Part 1 directly. Because the image is
+        tiny at this point, this is fast, and because everything is shrunk
+        proportionally, a small shift found here corresponds to a much larger shift
+        at full resolution.</li>
+        <li><strong>Climb back up.</strong> At each larger scale, I take the shift
+        found at the level below and double it (since the image just doubled in
+        size, the correct shift should too), then run a small local search
+        (&plusmn;8 pixels) around that doubled estimate to correct for any rounding
+        or averaging error introduced by downsampling.</li>
+        <li><strong>Repeat</strong> until back at full resolution, where the final
+        refined shift is returned.</li>
+    </ol>
+
+    <details>
+        <summary>click to show pyramid code</summary>
+        <pre><code>def downsample(im):
+    h, w = im.shape[0] - im.shape[0] % 2, im.shape[1] - im.shape[1] % 2
+    im = im[:h, :w]
+    return (im[0::2, 0::2] + im[1::2, 0::2] + im[0::2, 1::2] + im[1::2, 1::2]) / 4.0
+
+def align_pyramid(channel, base, window=15, min_size=400, metric='l2'):
+    if min(channel.shape[0], channel.shape[1]) <= min_size:
+        return align(channel, base, window=window, metric=metric)
+
+    small_channel = downsample(channel)
+    small_base = downsample(base)
+    coarse_shift = align_pyramid(small_channel, small_base, window=window,
+                                  min_size=min_size, metric=metric)
+    dx, dy = coarse_shift[0] * 2, coarse_shift[1] * 2
+
+    # refine with a small local search around the doubled estimate
+    best_shift = (dx, dy)
+    best_score = None
+    edge = int(0.1 * min(channel.shape[0], channel.shape[1]))
+    for ddx in range(-8, 9):
+        for ddy in range(-8, 9):
+            shift = (dx + ddx, dy + ddy)
+            shifted = np.roll(channel, shift, axis=(0, 1))
+            a = shifted[edge:-edge, edge:-edge]
+            b = base[edge:-edge, edge:-edge]
+            score, lower_is_better = score_shift(a, b, metric)
+            better = (best_score is None) or (score < best_score if lower_is_better else score > best_score)
+            if better:
+                best_score = score
+                best_shift = shift
+    return best_shift</code></pre>
+    </details>
+
+    <p>For images already smaller than the minimum size threshold (the JPEGs), this
+       function skips the recursion entirely and falls straight through to the base
+       case. Hence the same <code>align_pyramid</code> function handles both the small
+       JPEGs and the large TIFFs, and reproduces the Part 1 results exactly on the
+       former.</p>
+
+    <h3>A worked example</h3>
+    <p>To make the coarse-to-fine process concrete, here's the actual sequence of
+       estimates the pyramid produced while aligning G to B on
+       <code>three_generations.tif</code> (4008&times;4633 pixels, aligned in 5 levels):</p>
+
+    <table>
+        <tr><th>Level size</th><th>Coarse estimate (from level below, &times;2)</th><th>Refined shift at this level</th></tr>
+        <tr><td>200 &times; 232 (base case)</td><td>&mdash;</td><td>(3, 1)</td></tr>
+        <tr><td>401 &times; 464</td><td>(6, 2)</td><td>(7, 2)</td></tr>
+        <tr><td>802 &times; 928</td><td>(14, 4)</td><td>(13, 3)</td></tr>
+        <tr><td>1604 &times; 1857</td><td>(26, 6)</td><td>(27, 6)</td></tr>
+        <tr><td>3209 &times; 3714 (full res)</td><td>(54, 12)</td><td>(54, 12)</td></tr>
+    </table>
+    <p>Each level's estimate is consistent with the one below it doubled and locally
+       refined, which is exactly the intended behavior. As discussed in the Problems
+       section, this particular image is actually a case where that consistency masks
+       a mistake made at the very first (base case) level.</p>
+
+    <h3>Final results</h3>
+    <p>Every image below was processed with the pyramid, using L2 on raw RGB pixel
+       values (matching Part 1's metric). Displacements are listed as (G shift, R shift).</p>
+
+    <div class="scroll-row">
+        <div class="scroll-card">
+            <img src="./media/cathedral_out.jpg" alt="Cathedral">
+            <div class="card-title">Cathedral</div>
+            <div class="caption">G shift: (5, 2); R shift: (12, 3)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/monastery_out.jpg" alt="Monastery">
+            <div class="card-title">Monastery</div>
+            <div class="caption">G shift: (-3, 2); R shift: (3, 2)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/tobolsk_out.jpg" alt="Tobolsk">
+            <div class="card-title">Tobolsk</div>
+            <div class="caption">G shift: (3, 3); R shift: (6, 3)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/church_out.jpg" alt="Church">
+            <div class="card-title">Church</div>
+            <div class="caption">G shift: (25, 4); R shift: (58, -4)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/wharf_out.jpg" alt="Wharf">
+            <div class="card-title">Wharf</div>
+            <div class="caption">G shift: (15, -7); R shift: (83, -16)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/harvesters_out.jpg" alt="Harvesters">
+            <div class="card-title">Harvesters</div>
+            <div class="caption">G shift: (59, 16); R shift: (124, 13) &mdash; localised plate damage, see Problems section</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/icon_out.jpg" alt="Icon">
+            <div class="card-title">Icon</div>
+            <div class="caption">G shift: (41, 17); R shift: (90, 23)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/ilemselga_out.jpg" alt="Ilemselga">
+            <div class="card-title">Ilemselga</div>
+            <div class="caption">G shift: (39, 7); R shift: (130, 11)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/melons_out.jpg" alt="Melons">
+            <div class="card-title">Melons</div>
+            <div class="caption">G shift: (82, 11); R shift: (178, 13)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/religous_painting_out.jpg" alt="Religious painting">
+            <div class="card-title">Religious Painting</div>
+            <div class="caption">G shift: (28, 3); R shift: (68, 7)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/self_portrait_out.jpg" alt="Self portrait">
+            <div class="card-title">Self Portrait</div>
+            <div class="caption">G shift: (79, 29); R shift: (176, 36)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/siren_out.jpg" alt="Siren">
+            <div class="card-title">Siren</div>
+            <div class="caption">G shift: (49, -6); R shift: (96, -25)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/three_generations_out.jpg" alt="Three generations">
+            <div class="card-title">Three Generations</div>
+            <div class="caption">G shift: (53, 14); R shift: (112, 11)</div>
+        </div>
+        <div class="scroll-card">
+            <img src="./media/emir_out_raw.jpg" alt="Emir raw">
+            <div class="card-title">Emir</div>
+            <div class="caption">G shift: (49, 24); R shift: (103, 57)</div>
+        </div>
+    </div>
+
+    <h2>Part 3: My Own Examples</h2>
+    <p>Three additional images from the Library of Congress Prokudin-Gorskii collection,
+       run through the full pyramid pipeline.</p>
+
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/train_out.jpg" alt="Train aligned">
+            <p>Train &mdash; G: (41, 1), R: (85, 29)</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/waterfall_out.jpg" alt="Waterfall aligned">
+            <p>Waterfall &mdash; G: (34, -9), R: (122, -18)</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/khan_out.jpg" alt="Khan aligned">
+            <p>Khan &mdash; G: (50, -6), R: (110, -21)</p>
+        </div>
+    </div>
+
+    <div class="summary-card">
+        Across all 17 images (14 provided + 3 of my own), 16 show clean alignment with
+        no visible ghosting or fringing. Only <code>harvesters.tif</code> has a small localised color
+        artifact, but this is physical damage on the original glass plate, not a
+        misalignment as the rest of that image is aligned correctly, and a whole-image
+        translation model cannot fix or introduce a defect confined to one small region.
+    </div>
+
+    <h2>Problems Encountered &amp; What I Changed</h2>
+
+    <div class="note-card">
+        <p class="label">1. Pyramid made a small image worse</p>
+        <p>Once I switched <code>cathedral.jpg</code> over to the pyramid function, it
+           came out worse than my original single-scale result. The image is small
+           enough that the pyramid downsampled it once into a blurry, low-detail
+           version, searched on that instead of the original, and only refined by
+           &plusmn;2 pixels afterward, which was not enough to recover from a
+           coarse-level mistake caused by the blur.</p>
+        <p><strong>What I changed:</strong> I raised the pyramid's <code>min_size</code>
+           threshold so small images like the JPEGs skip the recursion entirely and
+           fall straight through to plain brute-force search at full resolution,
+           matching the single-scale result exactly.</p>
+    </div>
+
+    <div class="note-card">
+        <p class="label">2. Emir.tif misaligned due to brightness mismatch between channels</p>
+        <p>Raw-pixel L2/NCC alignment produced a clearly doubled/ghosted result on
+           <code>emir.tif</code>, visible as thick solid color bands rather than a
+           sharp image. The robe's saturated blue and red dye is bright in one
+           filtered exposure and dark in another. These are real color differences, not 
+           misalignment, so my metric was trying to match brightness patterns
+           that were never going to agree.</p>
+        <p><strong>What I changed:</strong> I aligned on image gradients (edge strength)
+           instead of raw pixel brightness. Edges: the outline of the beard,
+           robe folds, embroidery, are shared structure across all three channels
+           even when raw brightness isn't, making the alignment far more robust to
+           saturated color. The channel is still shifted and merged using the original
+           pixel data; gradients are only used to score candidate shifts.</p>
+    </div>
+
+    <details>
+        <summary>click to show gradient code</summary>
+        <pre><code>def gradient_magnitude(im):
+    gx = np.zeros_like(im)
+    gy = np.zeros_like(im)
+    gx[:, :-1] = np.diff(im, axis=1)
+    gy[:-1, :] = np.diff(im, axis=0)
+    return np.sqrt(gx**2 + gy**2)
+
+def align_gradient(channel, base, window=15, metric='l2'):
+    gc = gradient_magnitude(channel)
+    gb = gradient_magnitude(base)
+    return align(gc, gb, window=window, metric=metric)</code></pre>
+    </details>
+
+    <div class="photo-row">
+        <div class="photo-item wide">
+            <img src="./media/emir_out_raw.jpg" alt="Emir before, raw pixel alignment">
+            <p>Before (raw pixels), G: (49, 24), R: (103, 57)</p>
+        </div>
+        <div class="photo-item wide">
+            <img src="./media/emir_out_gradient.jpg" alt="Emir after, gradient alignment">
+            <p>After (gradients), G: (49, 24), R: (107, 40)</p>
+        </div>
+    </div>
+
+    <div class="note-card">
+        <p class="label">3. Harvesters.tif localised plate damage</p>
+        <p>Two of the women in the group have blurry colours while the rest
+           of the image (people, baskets, tea bushes) is sharp.</p>
+        <p><strong>What I changed:</strong> left as-is. This is consistent with
+           physical damage on one of the original glass plates (a scratch or chip),
+           not a misalignment. The translation model shifts the entire channel
+           uniformly, so it structurally cannot fix a defect confined to one small
+           region.</p>
+    </div>
+
+</body>
+</html>

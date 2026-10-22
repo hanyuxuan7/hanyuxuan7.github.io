@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project 3B – Flow Matching from Scratch</title>
+    <style>
+        body {
+            font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            max-width: 960px;
+            color: #222;
+            line-height: 1.6;
+        }
+        a {
+            color: #2c5aa0;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 28px;
+            margin-top: 30px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            margin-top: 55px;
+        }
+        h3 {
+            font-size: 16px;
+            margin-top: 30px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        h4 {
+            font-size: 14px;
+            margin-top: 22px;
+            margin-bottom: 6px;
+            color: #444;
+        }
+        p {
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        /* single full-width figure with caption */
+        figure {
+            margin: 20px 0;
+            text-align: center;
+        }
+        figure img {
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        figcaption {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #777;
+        }
+        figure.narrow img {
+            max-width: 460px;
+            width: 100%;
+        }
+
+        /* small side-by-side grids */
+        .photo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .photo-item {
+            flex: 1 1 0;
+            min-width: 140px;
+            text-align: center;
+        }
+        .photo-item img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .photo-item p {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: #777;
+        }
+
+        /* formulas */
+        .formula {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 18px;
+            margin: 14px 0;
+            text-align: center;
+            font-family: "Cambria Math", Georgia, serif;
+            font-size: 17px;
+            color: #333;
+        }
+
+        /* collapsible code */
+        details {
+            margin: 14px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        summary {
+            cursor: pointer;
+            color: #2c5aa0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        details[open] summary {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            color: #666;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note-card {
+            background: #f7f7f7;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 14px 0;
+        }
+        .note-card p {
+            margin: 6px 0;
+        }
+        .note-card .label {
+            font-weight: 600;
+            color: #444;
+            font-size: 13px;
+        }
+
+        .summary-card {
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 18px 0;
+        }
+
+        /* things only the author can fill in — search the file for TODO */
+        .todo {
+            background: #fff3cd;
+            padding: 0 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html">&larr; Back to main page</a>
+
+    <h1>Project 3B: Flow Matching from Scratch</h1>
+    <p class="subtitle">Training a UNet denoiser on MNIST, then turning it into a time- and class-conditioned flow matching model</p>
+
+    <h2>Overview</h2>
+    <p>In Part A I used a pretrained flow model. Here I built and trained one myself on MNIST. Part 1 trains a
+       UNet to remove noise from a digit in one step, and shows why that can't generate new images: given pure
+       noise, the best it can do is output the average digit. Part 2 fixes this with flow matching, where the
+       network learns a velocity that moves an image from noise (t = 0) to a digit (t = 1) a little at a time.
+       Adding the time and then the class label as inputs gives a model that can draw a specific digit on
+       demand.</p>
+
+
+    <h2>Part 1: Training a Single-Step Denoising UNet</h2>
+
+    <h3>Part 1.1: Implementing the UNet</h3>
+    <p>The UNet takes a 1&times;28&times;28 image and returns one of the same size. The left half downsamples
+       twice (28 &rarr; 14 &rarr; 7), then average-pools down to 1&times;1, which forces the network to summarize
+       the whole image. The right half upsamples back to 28&times;28. At each size the encoder features are
+       concatenated onto the decoder's (the skip connections), so fine detail like stroke edges doesn't have to
+       squeeze through the bottleneck.</p>
+
+    <table>
+        <tr><th>Block</th><th>What it does</th><th>Output size</th></tr>
+        <tr><td>ConvBlock</td><td>two 3&times;3 Conv &rarr; BatchNorm &rarr; GELU</td><td>D &times; 28 &times; 28</td></tr>
+        <tr><td>DownBlock</td><td>3&times;3 conv, stride 2, then a ConvBlock</td><td>D &times; 14 &times; 14</td></tr>
+        <tr><td>DownBlock</td><td>same, doubling channels</td><td>2D &times; 7 &times; 7</td></tr>
+        <tr><td>Flatten</td><td>7&times;7 average pool + GELU</td><td>2D &times; 1 &times; 1</td></tr>
+        <tr><td>Unflatten</td><td>7&times;7 transposed conv, stride 7</td><td>2D &times; 7 &times; 7</td></tr>
+        <tr><td>UpBlock</td><td>concat skip, 4&times;4 transposed conv (stride 2), ConvBlock</td><td>D &times; 14 &times; 14</td></tr>
+        <tr><td>UpBlock</td><td>concat skip, same</td><td>D &times; 28 &times; 28</td></tr>
+        <tr><td>ConvBlock + Conv</td><td>concat skip, ConvBlock, 3&times;3 conv to 1 channel</td><td>1 &times; 28 &times; 28</td></tr>
+    </table>
+
+    <details>
+        <summary>click to show UNet code</summary>
+        <pre><code>class UnconditionalUNet(nn.Module):
+    def __init__(self, in_channels, num_hiddens):
+        super().__init__()
+        D = num_hiddens
+        self.init_conv = ConvBlock(in_channels, D)   # (D, 28, 28)
+        self.down1 = DownBlock(D, D)                 # (D, 14, 14)
+        self.down2 = DownBlock(D, 2 * D)             # (2D, 7, 7)
+        self.flatten = Flatten()                     # (2D, 1, 1)
+        self.unflatten = Unflatten(2 * D)            # (2D, 7, 7)
+        self.up1 = UpBlock(4 * D, D)                 # cat(2D, 2D) -> (D, 14, 14)
+        self.up2 = UpBlock(2 * D, D)                 # cat(D, D)   -> (D, 28, 28)
+        self.final = ConvBlock(2 * D, D)
+        self.out = nn.Conv2d(D, in_channels, 3, 1, 1)
+
+    def forward(self, x):
+        x0 = self.init_conv(x)
+        d1 = self.down1(x0)
+        d2 = self.down2(d1)
+        h  = self.unflatten(self.flatten(d2))
+        u1 = self.up1(torch.cat([d2, h], dim=1))
+        u2 = self.up2(torch.cat([d1, u1], dim=1))
+        return self.out(self.final(torch.cat([x0, u2], dim=1)))</code></pre>
+    </details>
+
+    <!-- ===================================================== -->
+    <h3>Part 1.2: Using the UNet to Train a Denoiser</h3>
+    <p>To make training pairs, I add Gaussian noise of strength &sigma; to a clean digit x:</p>
+    <div class="formula">z = x + &sigma;&epsilon;, &nbsp;&nbsp; &epsilon; ~ N(0, I)</div>
+    <p>The UNet gets z and is trained to output x with an MSE loss. At &sigma; = 1 the digit is still faintly
+       visible, but most of what you see is noise.</p>
+
+    <figure>
+        <img src="./media/noising.png" alt="MNIST digits with increasing noise">
+        <figcaption>Five training digits noised with &sigma; = 0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0 (left to right).</figcaption>
+    </figure>
+
+    <h4>Part 1.2.1: Training</h4>
+    <p>I trained at &sigma; = 0.5 with the recommended settings. New noise is drawn for every batch, so the
+       model never sees the same noisy image twice.</p>
+    <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>Hidden dimension D</td><td>128</td></tr>
+        <tr><td>Batch size</td><td>256</td></tr>
+        <tr><td>Optimizer</td><td>Adam, lr = 1e-4</td></tr>
+        <tr><td>Noise level &sigma;</td><td>0.5</td></tr>
+        <tr><td>Epochs</td><td>5</td></tr>
+    </table>
+
+    <figure>
+        <img src="./media/denoiser_sigma0.5_loss.png" alt="Training loss of the single-step denoiser">
+        <figcaption>Training loss per optimizer step (faint) and its 100-step moving average.</figcaption>
+    </figure>
+
+    <p>To compare the two checkpoints fairly, I ran both on the same test digits with the same noise.</p>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/denoise_epoch1.png" alt="Denoising results after 1 epoch">
+            <p>After epoch 1. Rows: clean, noisy (&sigma; = 0.5), denoised.</p>
+        </div>
+    </div>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/denoise_epoch5.png" alt="Denoising results after 5 epochs">
+            <p>After epoch 5. Same inputs.</p>
+        </div>
+    </div>
+    <p>After one epoch the digits are already easy to read, but there are faint gray specks in the background
+       and a few stray marks on the strokes. After five epochs the background is fully black and the stray marks
+       are gone. The difference is small, so most of the learning happens in the first epoch.</p>
+
+    <h4>Part 1.2.2: Out-of-Distribution Testing</h4>
+    <p>The denoiser only ever saw &sigma; = 0.5. Here I ran it on the same test digits at other noise levels
+       without retraining.</p>
+    <figure>
+        <img src="./media/ood.png" alt="Denoiser tested on noise levels it was not trained on">
+        <figcaption>For each digit: noisy inputs at &sigma; = 0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0 (top row) and the denoised outputs (bottom row).</figcaption>
+    </figure>
+    <p>Up to &sigma; = 0.6 the outputs look almost the same as the clean digits, so less noise than it was
+       trained on is no problem. It starts breaking at 0.8 and is clearly worse at 1.0. The 1 grows a bar and
+       starts to look like a 7, the 2 picks up smudges, and the 0 gets partly filled in. The model learned how
+       much noise to remove at 0.5, so with more it keeps some of the noise as extra strokes.</p>
+
+    <h4>Part 1.2.3: Denoising Pure Noise</h4>
+    <p>To see if a one-step denoiser can generate images, I trained a fresh UNet (same settings, 5 epochs)
+       where the input is pure noise z ~ N(0, I) with no digit in it, and the target is still a clean digit.</p>
+
+    <figure>
+        <img src="./media/pure_noise_loss.png" alt="Training loss for the pure noise denoiser">
+        <figcaption>Training loss for the pure-noise model.</figcaption>
+    </figure>
+
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/pure_noise_epoch1.png" alt="Pure noise denoiser after 1 epoch">
+            <p>After epoch 1. Top two rows: input noise. Bottom two rows: outputs.</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/pure_noise_epoch5.png" alt="Pure noise denoiser after 5 epochs">
+            <p>After epoch 5. Same input noise.</p>
+        </div>
+    </div>
+
+    <figure class="narrow">
+        <img src="./media/pure_noise_vs_mean.png" alt="Mean training image next to the model output">
+        <figcaption>Left: the pixel-wise mean of all 60,000 training digits. Right: one output of the pure-noise model.</figcaption>
+    </figure>
+
+    <p>Every output is the same blurry blob no matter what noise goes in, and it looks almost identical to
+       the average training image. This comes from the loss. With MSE, the best prediction for an input is the
+       average of all the targets that could go with it:</p>
+    <div class="formula">f*(z) = E[ x | z ]</div>
+    <p>Here the noise has nothing to do with the digit, so it gives no hint about which one is wanted, and
+       E[x | z] is just E[x], the mean of the training set. The network learns to ignore its input. My outputs
+       look like a blurry 8, an oval with a brighter band through the middle, which is where the strokes of 0,
+       3, 8 and 9 overlap most. Digits like 1 and 7 only add a faint vertical smear. Epochs 1 and 5 look nearly
+       the same. This is why one-step denoising can't make new digits, and it's what Part 2 fixes.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>Part 2: Flow Matching</h2>
+    <p>Flow matching builds a path from a noise image x<sub>0</sub> to a real digit x<sub>1</sub>. I use a
+       straight line, so at time t the image is a blend of the two:</p>
+    <div class="formula">x<sub>t</sub> = (1 &minus; t) x<sub>0</sub> + t x<sub>1</sub>, &nbsp;&nbsp; t &isin; [0, 1]</div>
+    <p>The velocity along this line is constant:</p>
+    <div class="formula">dx<sub>t</sub>/dt = x<sub>1</sub> &minus; x<sub>0</sub></div>
+    <p>The UNet u<sub>&theta;</sub>(x<sub>t</sub>, t) learns to predict this velocity. To sample, I start from
+       noise and follow the predicted velocity in small Euler steps until t = 1. Unlike Part 1, the network
+       never has to make a digit in one jump. It only has to say which way to move from where it is.</p>
+
+    <h3>Part 2.1: Adding Time Conditioning to the UNet</h3>
+    <p>The right direction depends on how noisy the image is, so the network needs to know t. I pass t
+       through two small fully connected blocks (Linear &rarr; GELU &rarr; Linear) and multiply the results into
+       the decoder, once after the Unflatten (2D channels) and once after the first UpBlock (D channels). The
+       time vector is reshaped to N &times; C &times; 1 &times; 1 so it applies to every pixel.</p>
+
+    <details>
+        <summary>click to show time-conditioned forward pass</summary>
+        <pre><code>def forward(self, x, t):
+    t  = t.view(-1, 1)
+    t1 = self.fc1_t(t)[:, :, None, None]       # (N, 2D, 1, 1)
+    t2 = self.fc2_t(t)[:, :, None, None]       # (N, D, 1, 1)
+
+    x0 = self.init_conv(x)
+    d1 = self.down1(x0)
+    d2 = self.down2(d1)
+    h  = self.unflatten(self.flatten(d2)) * t1                 # inject t
+    u1 = self.up1(torch.cat([d2, h], dim=1)) * t2              # inject t again
+    u2 = self.up2(torch.cat([d1, u1], dim=1))
+    return self.out(self.final(torch.cat([x0, u2], dim=1)))</code></pre>
+    </details>
+
+    <h3>Part 2.2: Training the Time-Conditioned UNet</h3>
+    <p>Each step takes a batch of digits, fresh noise for each one, and a random t ~ U[0, 1]. The loss is the
+       squared error between the predicted and true velocity:</p>
+    <div class="formula">L = || (x<sub>1</sub> &minus; x<sub>0</sub>) &minus; u<sub>&theta;</sub>(x<sub>t</sub>, t) ||&sup2;</div>
+
+    <details>
+        <summary>click to show training step</summary>
+        <pre><code>def time_fm_forward(unet, x_1, num_ts):
+    x_0 = torch.randn_like(x_1)                          # noise at t = 0
+    t   = torch.rand(x_1.shape[0], device=x_1.device)    # t ~ U[0, 1]
+    tt  = t.view(-1, 1, 1, 1)
+    x_t = (1 - tt) * x_0 + tt * x_1                      # point on the straight path
+    return F.mse_loss(unet(x_t, t), x_1 - x_0)           # predict velocity, not noise</code></pre>
+    </details>
+
+    <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>Hidden dimension D</td><td>64</td></tr>
+        <tr><td>Batch size</td><td>64</td></tr>
+        <tr><td>Optimizer</td><td>Adam, initial lr = 1e-2</td></tr>
+        <tr><td>LR schedule</td><td>exponential decay, &gamma; = 0.1<sup>1/10</sup> per epoch (lr falls 10&times; over training)</td></tr>
+        <tr><td>Epochs</td><td>10</td></tr>
+    </table>
+
+    <figure>
+        <img src="./media/time_conditioned_fm_loss.png" alt="Training loss of the time-conditioned flow matching model">
+        <figcaption>Training loss for the time-conditioned UNet.</figcaption>
+    </figure>
+    <p>The loss drops from about 2.0 to under 0.2 in the first few hundred steps, then levels off around 0.1.
+       Unlike the denoiser, it never gets close to zero. Many different (x<sub>0</sub>, x<sub>1</sub>) pairs
+       could produce the same x<sub>t</sub>, so the target velocity is partly unpredictable and the loss can't
+       go to zero.</p>
+
+    <h3>Part 2.3: Sampling from the Time-Conditioned UNet</h3>
+    <p>Sampling starts from x ~ N(0, I) at t = 0 and takes 50 Euler steps of size 1/50:</p>
+    <div class="formula">x &larr; x + (1/50) &middot; u<sub>&theta;</sub>(x, t), &nbsp;&nbsp; t = 0, 1/50, &hellip;, 49/50</div>
+    <p>I used the same seed for every checkpoint, so each grid position starts from the same noise.</p>
+
+    <figure>
+        <img src="./media/time_fm_samples_epoch1.png" alt="Time-conditioned samples after 1 epoch">
+        <figcaption>Epoch 1.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/time_fm_samples_epoch5.png" alt="Time-conditioned samples after 5 epochs">
+        <figcaption>Epoch 5.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/time_fm_samples_epoch10.png" alt="Time-conditioned samples after 10 epochs">
+        <figcaption>Epoch 10.</figcaption>
+    </figure>
+    <p>At epoch 1 most samples are squiggles, and only a few (some 1s and 7s) are real digits. By epoch 5 a
+       good number are readable, and by epoch 10 there are more clean ones (6, 0, 3, 8, 2, 5, 9). Still, a lot
+       of them are odd shapes that look like two digits mixed together. Since the seed is fixed, each sample
+       keeps roughly the same shape across epochs and just gets cleaner. There's also no way to ask this model
+       for a particular digit, which the next part adds.</p>
+
+
+    <!-- ===================================================== -->
+    <h3>Part 2.4: Adding Class Conditioning to the UNet</h3>
+    <p>To pick which digit gets generated, I pass the class as a one-hot vector of length 10 through two more
+       FCBlocks. The class embedding scales the features and the time embedding shifts them:</p>
+    <div class="formula">h &larr; c<sub>1</sub> &middot; Unflatten(h) + t<sub>1</sub>, &nbsp;&nbsp; u<sub>1</sub> &larr; c<sub>2</sub> &middot; UpBlock(&hellip;) + t<sub>2</sub></div>
+    <p>During training I drop the class 10% of the time by zeroing the one-hot vector. That way one network
+       learns both to draw a given digit and to draw any digit, and classifier-free guidance needs both.</p>
+
+    <details>
+        <summary>click to show class conditioning and dropout</summary>
+        <pre><code># inside ClassConditionalUNet.forward
+c_vec = F.one_hot(c, 10).float()
+if mask is not None:
+    c_vec = c_vec * mask.view(-1, 1)          # all zeros = "no class"
+c1, c2 = self.fc1_c(c_vec), self.fc2_c(c_vec)
+...
+h  = c1[:, :, None, None] * self.unflatten(self.flatten(d2)) + t1[:, :, None, None]
+u1 = c2[:, :, None, None] * self.up1(torch.cat([d2, h], 1)) + t2[:, :, None, None]
+
+# inside class_fm_forward
+mask = (torch.rand(N, device=x_1.device) >= p_uncond).float()   # 0 with prob 0.1</code></pre>
+    </details>
+
+    <h3>Part 2.5: Training the Class-Conditioned UNet</h3>
+    <p>Training is the same as Part 2.2 (D = 64, batch size 64, Adam from lr = 1e-2 with exponential decay,
+       10 epochs), plus the labels and the 10% class dropout.</p>
+    <figure>
+        <img src="./media/class_fm_loss.png" alt="Training loss of the class-conditioned flow matching model">
+        <figcaption>Training loss for the class-conditioned UNet with the learning rate scheduler.</figcaption>
+    </figure>
+
+    <h3>Part 2.6: Sampling from the Class-Conditioned UNet</h3>
+    <p>At each step I run the model twice on the same image, once with the class (v<sub>c</sub>) and once
+       without (v<sub>u</sub>). Classifier-free guidance pushes past the conditional prediction, toward
+       whatever makes the image look more like the requested digit:</p>
+    <div class="formula">v = v<sub>u</sub> + &gamma; ( v<sub>c</sub> &minus; v<sub>u</sub> ), &nbsp;&nbsp; &gamma; = 5</div>
+    <p>I used 300 Euler steps and generated four of each digit (one digit per column), with the same seed at
+       every checkpoint.</p>
+
+    <details>
+        <summary>click to show sampling loop</summary>
+        <pre><code>x  = torch.randn(N, 1, 28, 28, generator=g).to(dev)
+dt = 1.0 / num_ts
+for i in range(num_ts):
+    t   = torch.full((N,), i * dt, device=dev)
+    v_c = unet(x, c, t, ones)                      # with class
+    v_u = unet(x, c, t, zeros)                     # class dropped
+    v   = v_u + guidance_scale * (v_c - v_u)
+    x   = x + dt * v</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/class_fm_samples_epoch1.png" alt="Class-conditioned samples after 1 epoch">
+        <figcaption>Epoch 1 (with scheduler). Columns are digits 0&ndash;9.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/class_fm_samples_epoch5.png" alt="Class-conditioned samples after 5 epochs">
+        <figcaption>Epoch 5 (with scheduler).</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/class_fm_samples_epoch10.png" alt="Class-conditioned samples after 10 epochs">
+        <figcaption>Epoch 10 (with scheduler).</figcaption>
+    </figure>
+    <p>At epoch 1 the 0s, 3s, 6s and 7s are already clear, but the 1s are short curved marks and the 2, 4, 5,
+       8 and 9 columns are broken or blotchy. By epoch 5 every column has the right digit in all four rows, a
+       big jump from the time-only model. Epoch 10 looks almost the same as epoch 5. Guidance makes the strokes
+       thick and high-contrast, but the four samples of each digit still vary in slant and style.</p>
+
+    <h4>Getting rid of the learning rate scheduler</h4>
+    <p>The scheduler starts with a large learning rate to learn the digit shapes quickly, then shrinks it so
+       the weights settle at the end. Without one I have to pick a single rate. 1e-2 the whole way would be too
+       big to settle, so I used a constant 1e-3, which is about where the scheduled run ends up. Everything else
+       (seed, data order, architecture, epochs) stayed the same.</p>
+
+    <figure>
+        <img src="./media/scheduler_comparison.png" alt="Loss curves with and without the scheduler">
+        <figcaption>Smoothed training loss: exponential decay from 1e-2 vs. constant 1e-3.</figcaption>
+    </figure>
+
+    <figure>
+        <img src="./media/class_fm_no_sched_samples_epoch1.png" alt="No-scheduler samples after 1 epoch">
+        <figcaption>Epoch 1, constant lr = 1e-3.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/class_fm_no_sched_samples_epoch5.png" alt="No-scheduler samples after 5 epochs">
+        <figcaption>Epoch 5, constant lr = 1e-3.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/class_fm_no_sched_samples_epoch10.png" alt="No-scheduler samples after 10 epochs">
+        <figcaption>Epoch 10, constant lr = 1e-3.</figcaption>
+    </figure>
+    <p>Surprisingly, the epoch 1 samples are better without the scheduler. All ten digits are already clear,
+       while the scheduled run still had broken 2s, 4s and 8s at that point. So 1e-2 seems too large to start
+       with for this model, and the scheduler only fixes that once the rate has decayed. The loss curves agree:
+       the constant-rate run is lower for about the first 2,000 steps, then the two overlap and both end around
+       0.085. By epochs 5 and 10 the samples look the same. Lowering the rate to a constant 1e-3 was enough to
+       make up for removing the scheduler.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>Thoughts</h2>
+    <p>The pure-noise experiment was what made the rest of the project click for me. Every output collapsed to
+       the same blurry 8 that matched the mean training image, and the network wasn't broken. It was doing
+       exactly what MSE asks for when the input tells it nothing. Flow matching gets around this because each
+       step only has to pick a direction from an image that already has some structure. I also learned not to
+       assume the recommended settings are the best ones. Dropping the scheduler for a smaller constant rate
+       gave better samples at epoch 1 and the same results by epoch 10.</p>
+</body>
+</html>

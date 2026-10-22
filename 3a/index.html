@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project 3A – Exploring the Power of Flow Models</title>
+    <style>
+        body {
+            font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            max-width: 960px;
+            color: #222;
+            line-height: 1.6;
+        }
+        a {
+            color: #2c5aa0;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 28px;
+            margin-top: 30px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            margin-top: 55px;
+        }
+        h3 {
+            font-size: 16px;
+            margin-top: 30px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        h4 {
+            font-size: 14px;
+            margin-top: 22px;
+            margin-bottom: 6px;
+            color: #444;
+        }
+        p {
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        /* single full-width figure with caption */
+        figure {
+            margin: 20px 0;
+            text-align: center;
+        }
+        figure img {
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        figcaption {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #777;
+        }
+        figure.narrow img {
+            max-width: 460px;
+            width: 100%;
+        }
+
+        /* small side-by-side grids */
+        .photo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .photo-item {
+            flex: 1 1 0;
+            min-width: 140px;
+            text-align: center;
+        }
+        .photo-item img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .photo-item p {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: #777;
+        }
+
+        /* formulas */
+        .formula {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 18px;
+            margin: 14px 0;
+            text-align: center;
+            font-family: "Cambria Math", Georgia, serif;
+            font-size: 17px;
+            color: #333;
+        }
+
+        /* collapsible code */
+        details {
+            margin: 14px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        summary {
+            cursor: pointer;
+            color: #2c5aa0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        details[open] summary {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            color: #666;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note-card {
+            background: #f7f7f7;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 14px 0;
+        }
+        .note-card p {
+            margin: 6px 0;
+        }
+        .note-card .label {
+            font-weight: 600;
+            color: #444;
+            font-size: 13px;
+        }
+
+        .summary-card {
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 18px 0;
+        }
+
+        /* things only the author can fill in — search the file for TODO */
+        .todo {
+            background: #fff3cd;
+            padding: 0 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html">&larr; Back to main page</a>
+
+    <h1>Project 3A: Exploring the Power of Flow Models</h1>
+    <p class="subtitle">Noising, denoising, Euler sampling, classifier-free guidance, image editing, visual anagrams, and hybrid images with a pretrained flow model</p>
+
+    <h2>Overview</h2>
+    <p>This part uses a pretrained text-to-image flow model (PixNerd-XXL-P16-T2I, 512&times;512, with
+       Qwen3 for the text prompts), so nothing is trained. Given a noisy image x<sub>t</sub>, a time t and a
+       prompt c, the model predicts a velocity v<sub>&theta;</sub>(x<sub>t</sub>, t, c), which is the direction
+       to move the image so it looks more like a real picture of the prompt. Everything in this part comes
+       from that one function. One step gives a denoiser, many small steps generate images from noise, and
+       changing how the velocity is combined gives guidance, editing, and the two illusions at the end.</p>
+
+    <p>In this project <strong>t = 0 is pure noise and t = 1 is a clean image</strong>. Unless stated
+       otherwise, I used step size h = 0.02, CFG weight w = 7, the empty string as the unconditional prompt,
+       and seed 180.</p>
+
+
+    <h2>Part 1: Visualizing Training and Sampling</h2>
+
+    <h3>Part 1.1: Constructing Noisy Training Inputs</h3>
+    <p>A noisy image at time t is a straight-line blend of a noise image &epsilon; and the clean image
+       x<sub>1</sub>:</p>
+    <div class="formula">x<sub>t</sub> = (1 &minus; t) &epsilon; + t x<sub>1</sub>, &nbsp;&nbsp; &epsilon; ~ N(0, I)</div>
+    <p>I used one noise tensor for all three times, so t is the only thing that changes, and kept all of
+       them for Sections 1.2&ndash;1.5.</p>
+
+    <figure>
+        <img src="./media/training_inputs.png" alt="Original image and noisy versions at t = 0.25, 0.50, 0.75">
+        <figcaption>My image (center-cropped to 512&times;512) and the noisy inputs at t = 0.25, 0.50, 0.75.</figcaption>
+    </figure>
+    <p>My image is a building in New York that I took while rowing a boat in Central Park. At t = 0.25 it is
+       mostly noise with only the rough shapes visible, and by t = 0.75 most of the detail is back.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 1.2: Classical Denoising</h3>
+    <p>As a baseline with no learning, I tried a Gaussian blur. x<sub>t</sub> only contains t times the image,
+       so I divide by t first to get the brightness back, then blur to average out the noise:</p>
+    <div class="formula">x&#770;<sub>1</sub><sup>blur</sup> = G<sub>&sigma;</sub> &lowast; ( x<sub>t</sub> / t )</div>
+    <p>For each t I tried &sigma; = 1, 2, 4, 8, 16 and kept the one with the lowest MSE to the clean image.</p>
+
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/blur_0.25.png" alt="Blur denoising at t = 0.25">
+            <p>t = 0.25, best &sigma; = 8</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/blur_0.5.png" alt="Blur denoising at t = 0.50">
+            <p>t = 0.50, best &sigma; = 4</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/blur_0.75.png" alt="Blur denoising at t = 0.75">
+            <p>t = 0.75, best &sigma; = 2</p>
+        </div>
+    </div>
+    <p>The noisier the input, the bigger the best &sigma;. The blur gets rid of the noise but takes the edges
+       and texture with it, since it can't tell noise from detail. What's left is soft color blobs in roughly
+       the right layout.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 1.3: One-Step Denoising</h3>
+    <p>The path from x<sub>t</sub> to x<sub>1</sub> is a straight line with (1 &minus; t) of time left, so
+       one step of that length along the predicted velocity gives an estimate of the clean image:</p>
+    <div class="formula">x&#770;<sub>1</sub> = x<sub>t</sub> + (1 &minus; t) &middot; v<sub>&theta;</sub>(x<sub>t</sub>, t, c), &nbsp;&nbsp; c = &ldquo;a high quality photo&rdquo;</div>
+
+    <details>
+        <summary>click to show one-step denoising code</summary>
+        <pre><code>def interpolate(image, noise, t):
+    return (1 - t) * noise + t * image                 # t = 0 -> noise, t = 1 -> image
+
+@torch.inference_mode()
+def one_step_denoise(x, t, condition, predict_velocity):
+    v = predict_velocity(x, t, condition)              # one model call
+    return x + (1 - t) * v                             # jump straight to t = 1</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/one_step_0.25.png" alt="One-step denoising at t = 0.25">
+        <figcaption>t = 0.25: original, noisy input, one-step estimate.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/one_step_0.5.png" alt="One-step denoising at t = 0.50">
+        <figcaption>t = 0.50.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/one_step_0.75.png" alt="One-step denoising at t = 0.75">
+        <figcaption>t = 0.75.</figcaption>
+    </figure>
+    <p>At t = 0.75 the estimate is close to the original. At t = 0.25 the layout and colors are right but
+       the detail is gone. With that much noise, lots of different images could match the input, so a single
+       guess lands near their average. It's still much better than the blur.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 1.4: Visualizing Velocity</h3>
+    <p>Here I compared what the model adds in 1.3, the predicted update (1 &minus; t)v&#770;, with the update
+       that would recover my image exactly. Since I know the noise, the true velocity is
+       v<sub>gt</sub> = x<sub>1</sub> &minus; &epsilon;, so the true update is
+       x<sub>1</sub> &minus; x<sub>t</sub>. The error map is the RMS over RGB at each pixel:</p>
+    <div class="formula">E<sub>t</sub> = &radic;( mean<sub>RGB</sub> [ (1 &minus; t)( v&#770;<sub>t</sub> &minus; v<sub>gt</sub> ) ]&sup2; )</div>
+    <p>Both updates share one color scale with gray as zero, and the error maps share one linear scale, so
+       all three times can be compared directly.</p>
+
+    <details>
+        <summary>click to show velocity diagnostics code</summary>
+        <pre><code>@torch.inference_mode()
+def velocity_diagnostics(x_t, t, clean_image, epsilon, condition, predict_velocity):
+    predicted_update = (1 - t) * predict_velocity(x_t, t, condition)
+    ground_truth_update = clean_image - x_t                    # = (1 - t)(x1 - eps)
+    error_map = ((predicted_update - ground_truth_update) ** 2).mean(dim=1).sqrt()   # RMS over RGB
+    return predicted_update, ground_truth_update, error_map</code></pre>
+    </details>
+
+    <figure class="narrow">
+        <img src="./media/velocity_original.png" alt="Original image">
+        <figcaption>Original image.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/velocity_0.25.png" alt="Velocity visualization at t = 0.25">
+        <figcaption>t = 0.25: noisy input, predicted update, ground-truth update, error.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/velocity_0.50.png" alt="Velocity visualization at t = 0.50">
+        <figcaption>t = 0.50.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/velocity_0.75.png" alt="Velocity visualization at t = 0.75">
+        <figcaption>t = 0.75.</figcaption>
+    </figure>
+    <p>The ground-truth update is mostly the negative of the noise, so it looks like static with a faint
+       image in it. The predicted update gets the static right but is smoother where the image is. The error
+       is biggest at t = 0.25 and sits on the edges and fine texture, the details the model can't know from
+       such a noisy input. As t goes up, the updates shrink and the error map gets darker.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 1.5: Iterative Denoising with Euler Sampling</h3>
+    <p>Instead of one big jump, I take small steps and ask the model for a new velocity each time:</p>
+    <div class="formula">x<sub>t+h</sub> = x<sub>t</sub> + h &middot; v<sub>&theta;</sub>(x<sub>t</sub>, t, c)</div>
+    <p>The last step is shortened if needed so the run ends at exactly t = 1. From the t = 0.50 input with
+       h = 0.02 that's 25 updates. I checked the sampler with a constant velocity of 1, and it took 50 steps
+       from t = 0, 25 from t = 0.5 and 4 from t = 0.93, ending at t = 1 every time.</p>
+
+    <details>
+        <summary>click to show Euler sampler code</summary>
+        <pre><code>@torch.inference_mode()
+def euler_sample(x_start, t_start, step_size, velocity):
+    x = x_start.clone().float()
+    n_steps = math.ceil((1.0 - t_start) / step_size - 1e-9)
+    states = [(t_start, x.clone())]
+    for i in range(n_steps):
+        t = t_start + i * step_size
+        last = (i == n_steps - 1)
+        t_next = 1.0 if last else t_start + (i + 1) * step_size
+        x = x + (t_next - t) * velocity(x, t)           # new model call every step
+        if (i + 1) % 5 == 0 or last:
+            states.append((t_next, x.clone()))
+    return x, states</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/trajectory.png" alt="Euler sampling trajectory from t = 0.50">
+        <figcaption>Starting at t = 0.50, then every fifth update, ending at t = 1.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/comparison.png" alt="Original, blur, one step, and Euler results">
+        <figcaption>Same t = 0.50 input: original, Gaussian blur, one step, and 25 Euler steps.</figcaption>
+    </figure>
+
+    <table>
+        <tr><th>Method (from t = 0.50)</th><th>Model calls</th><th>MSE to original</th></tr>
+        <tr><td>Gaussian blur</td><td>0</td><td>0.0211</td></tr>
+        <tr><td>One step</td><td>1</td><td>0.0072</td></tr>
+        <tr><td>Euler (h = 0.02)</td><td>25</td><td>0.0087</td></tr>
+    </table>
+    <p>The blur is clearly the worst, with about three times the error of the other two. Euler looks the
+       sharpest and most realistic, but surprisingly one step has the lower MSE. The one-step result is a
+       blurry average of every image that could match the input, and an average is a safe bet under squared
+       error. Euler commits to specific detail, which looks better but doesn't exactly match my photo, so
+       every made-up edge counts against it.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 1.6: Generating Images from Noise</h3>
+    <p>With t<sub>start</sub> = 0 there's no image in the input at all, so 50 Euler steps with &ldquo;a high
+       quality photo&rdquo; make an image from scratch. I generated five with seeds 180&ndash;184.</p>
+    <figure>
+        <img src="./media/conditional_samples.png" alt="Five samples from pure noise">
+        <figcaption>&ldquo;a high quality photo&rdquo;, no guidance, seeds 180&ndash;184.</figcaption>
+    </figure>
+    <p>The generic prompt mostly gives portraits of people. Without guidance they tend to look messy, and
+       some never settle on a clear subject.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>Part 2: Conditional Generation and Guidance</h2>
+
+    <h3>Part 2.1: Classifier-Free Guidance</h3>
+    <p>To make the prompt count for more, I get two velocities at the same x<sub>t</sub> and t, one with the
+       prompt (v<sub>c</sub>) and one with the empty prompt (v<sub>u</sub>). Their difference is what the
+       prompt adds, and CFG pushes further in that direction:</p>
+    <div class="formula">v<sub>cfg</sub> = v<sub>c</sub> + w ( v<sub>c</sub> &minus; v<sub>u</sub> ), &nbsp;&nbsp; w = 7</div>
+    <p>With w = 0 this is just the conditional prediction, which I checked. Each step now costs two model
+       calls instead of one.</p>
+
+    <details>
+        <summary>click to show CFG code</summary>
+        <pre><code>def cfg_velocity(x, t, condition, w, predict_velocity, null_condition):
+    v_c = predict_velocity(x, t, condition)            # with the prompt
+    if w == 0:
+        return v_c
+    v_u = predict_velocity(x, t, null_condition)       # empty prompt, same x and t
+    return v_c + w * (v_c - v_u)</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/cfg_samples.png" alt="Five samples with classifier-free guidance">
+        <figcaption>&ldquo;a high quality photo&rdquo; with w = 7, seeds 180&ndash;184 (same starting noise as Part 1.6).</figcaption>
+    </figure>
+    <p>Since the starting noise is the same, each guided image lines up with its unguided version in 1.6.
+       The guided ones have clearer subjects, sharper detail and much stronger contrast. The downside is
+       that they look more alike, and the colors are often oversaturated and less natural.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>Part 3: Creative Applications</h2>
+
+    <h3>Part 3.1: Image-to-Image Editing</h3>
+    <p>This is SDEdit. I noise a real image to some t<sub>start</sub> and run the Euler sampler with CFG
+       from there to t = 1. The model has to fill in whatever the noise destroyed, so the result keeps only
+       what survived the noise.</p>
+    <div class="formula">x<sub>start</sub> = (1 &minus; t<sub>start</sub>) &epsilon; + t<sub>start</sub> x<sub>1</sub>, &nbsp;&nbsp; then Euler from t<sub>start</sub> to 1</div>
+    <p>A small t<sub>start</sub> is almost pure noise, so little of the input is left. A large one keeps
+       most of it. I used t<sub>start</sub> = 0.02, 0.04, 0.06, 0.10, 0.14, 0.25, 0.50 with &ldquo;a high
+       quality photo&rdquo; and the same noise for every edit.</p>
+
+    <details>
+        <summary>click to show edit code</summary>
+        <pre><code>def edit(image, noise, t_start, condition, predict_velocity, w=7, step_size=0.02):
+    x_t = interpolate(image, noise, t_start)            # partially noise the image
+    vel = lambda x, t: cfg_velocity(x, t, condition, w, predict_velocity, null_condition)
+    out, _ = euler_sample(x_t, t_start, step_size, vel)
+    return out</code></pre>
+    </details>
+
+    <h4>Campanile</h4>
+    <figure>
+        <img src="./media/edit_campanile.png" alt="Campanile edits at seven starting times">
+        <figcaption>Original and edits at t<sub>start</sub> = 0.02, 0.04, 0.06, 0.10, 0.14, 0.25, 0.50.</figcaption>
+    </figure>
+
+    <h4>My own images</h4>
+    <figure>
+        <img src="./media/edit_my_image_1.png" alt="Edits of my building photo">
+        <figcaption>My building photo. Same starting times.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/edit_my_image_2.png" alt="Edits of my dog photo">
+        <figcaption>My dog photo (it loaded sideways, see below). Same starting times.</figcaption>
+    </figure>
+    <p>At 0.02&ndash;0.06 the results are unrelated images that only share the overall colors. Around
+       0.10&ndash;0.14 the layout of the original shows up, and at 0.25&ndash;0.50 the results are close to the
+       original with small changes in texture.</p>
+    <p>The dog photo was the exception. It loaded sideways because my phone stores the orientation as
+       metadata, which the preprocessing ignores. The dog only comes back at 0.50. From 0.10 to 0.25 the model
+       kept the layout and colors but turned them into a person in a beige sweater, with the cream fur as the
+       sweater and the dark object in the corner as hair. My guess is that a small, pale dog seen sideways
+       from above looks nothing like the upright photos the model mostly learned from, so it falls back on a
+       more common subject with the same colors.</p>
+
+    <h4>Web image and hand-drawn images</h4>
+    <p>I also tried images that aren't photos, using the same starting times and prompt.</p>
+    <figure>
+        <img src="./media/edit_web_image.png" alt="Edits of a web image">
+        <figcaption>A photo of abstract art from the web. Same starting times.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/edit_drawing_1.png" alt="Edits of my first drawing">
+        <figcaption>My drawing of an apple tree. Same starting times.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/edit_drawing_2.png" alt="Edits of my second drawing">
+        <figcaption>My drawing of a panda. Same starting times.</figcaption>
+    </figure>
+    <p>I expected the drawings to turn into realistic photos, but neither did. From 0.14 up they stay
+       drawings with smoother lines. The interesting part is 0.04&ndash;0.10, where the model turns parts of
+       the drawing into real objects. On the apple tree, the apples became red patches on a white cloth, and
+       at 0.10 the two trunk lines became a pair of legs under it. On the panda, the black eye patches became
+       sunglasses at 0.04&ndash;0.06 and the panda became a shiny 3D toy, and at 0.10 it's a shaded 3D version
+       of my drawing. The model keeps the shape and color of each part but decides for itself what it is.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 3.2: Text-Guided Image Editing</h3>
+    <p>Same as 3.1, but with a prompt for what I want the image to become. The starting time decides how much
+       of the original survives, and the prompt decides what fills in the rest.</p>
+
+    <table>
+        <tr><th>Image</th><th>Prompt</th></tr>
+        <tr><td>Campanile</td><td>&ldquo;a photograph of a porcelain vase on a table&rdquo;</td></tr>
+        <tr><td>Building</td><td>&ldquo;a photograph of a chocolate bar&rdquo;</td></tr>
+        <tr><td>Dog</td><td>&ldquo;a photograph of a bowl of soup&rdquo;</td></tr>
+    </table>
+
+    <figure>
+        <img src="./media/text_edit_campanile.png" alt="Campanile edited toward a porcelain vase">
+        <figcaption>Campanile &rarr; &ldquo;a photograph of a porcelain vase on a table&rdquo;, t<sub>start</sub> = 0.02 &ndash; 0.50.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/text_edit_my_image_1.png" alt="Building edited toward a chocolate bar">
+        <figcaption>Building &rarr; &ldquo;a photograph of a chocolate bar&rdquo;.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/text_edit_my_image_2.png" alt="Dog edited toward a bowl of soup">
+        <figcaption>Dog &rarr; &ldquo;a photograph of a bowl of soup&rdquo;.</figcaption>
+    </figure>
+    <p>For all three, 0.02&ndash;0.06 only follows the prompt, and by 0.50 the prompt barely does anything. The
+       best results are in between.</p>
+    <p><strong>Campanile &rarr; vase:</strong> At 0.10 the tower turns into a tall white porcelain column with a
+       blue painted band, still in the original sky and trees. At 0.14 the real tower is back but looks
+       glazed.</p>
+    <p><strong>Building &rarr; chocolate bar:</strong> At 0.10 the two towers become two pointed pieces of
+       chocolate on a chocolate base, which was my favorite result. At 0.14 the whole building is back but looks
+       made of chocolate. At 0.06 the model made a chocolate handbag, which shows how loosely it follows the
+       layout early on.</p>
+    <p><strong>Dog &rarr; soup:</strong> There's a bowl of soup from 0.02 to 0.14, with the gray floor as a
+       tablecloth and the dark object in the corner as a pot. 0.25 is the best mix, where the dog's face becomes
+       a garnish on a small saucer. Like in 3.1, the sideways dog was the hardest to edit while keeping it
+       recognizable.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 3.3: Visual Anagrams</h3>
+    <p>A visual anagram looks like one thing upright and something else rotated 180&deg;. At every Euler step
+       I get one velocity for prompt a on the image as it is, and one for prompt b on the rotated image, which
+       I rotate back. Averaging them moves the image toward both at once:</p>
+    <div class="formula">v = &frac12; [ v<sub>cfg</sub>(x<sub>t</sub>, t, a) + F( v<sub>cfg</sub>(F(x<sub>t</sub>), t, b) ) ]</div>
+    <p>F flips both axes (a 180&deg; rotation, not a mirror). Rotating the second velocity back puts both in
+       the same frame before averaging.</p>
+
+    <details>
+        <summary>click to show visual anagram code</summary>
+        <pre><code>def visual_anagrams(noise, condition_a, condition_b, predict_velocity, w=7, step_size=0.02):
+    def vel(x, t):
+        v1 = cfg_velocity(x, t, condition_a, w, predict_velocity, null_condition)
+        v2 = rotate180(cfg_velocity(rotate180(x), t, condition_b, w, predict_velocity, null_condition))
+        return (v1 + v2) / 2
+    out, _ = euler_sample(noise, 0.0, step_size, vel)
+    return out</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/anagram_views_0.png" alt="Visual anagram: fish and old lady">
+        <figcaption>Upright: &ldquo;a picture of a fish&rdquo;. Rotated 180&deg;: &ldquo;a portrait of an old lady&rdquo;.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/anagram_views_1.png" alt="Visual anagram: cat and tree">
+        <figcaption>Upright: &ldquo;a picture of a cat&rdquo;. Rotated 180&deg;: &ldquo;a picture of a tree&rdquo;.</figcaption>
+    </figure>
+    <p>The fish and old lady worked well. Rotated, the old lady is very clear, with the fish's scaly body as her
+       headscarf and the fins as its edges. Upright, the fish is weaker and looks a bit like an upside-down face,
+       because her features are so strong. For the cat and tree, the cat is clear upright. Rotated, its fluffy
+       body becomes the leaves and the tail becomes the trunk, so the tree reads at a glance, though you can
+       still see the cat's face in the leaves. In both, one prompt wins over the other.</p>
+
+    <!-- ===================================================== -->
+    <h3>Part 3.4: Hybrid Images</h3>
+    <p>This is the hybrid image idea from Project 2, but done on the velocity instead of the finished images.
+       At every step I take the low frequencies of prompt a's velocity and the high frequencies of prompt b's:</p>
+    <div class="formula">v = f<sub>low</sub>( v<sub>a</sub> ) + [ v<sub>b</sub> &minus; f<sub>low</sub>( v<sub>b</sub> ) ]</div>
+    <p>f<sub>low</sub> is a Gaussian blur with &sigma; = 16 and kernel size 265. Up close the detail from prompt b
+       should dominate, and from far away only prompt a's coarse shapes should be left.</p>
+
+    <details>
+        <summary>click to show hybrid code</summary>
+        <pre><code>def make_hybrids(noise, condition_a, condition_b, predict_velocity, w=7, step_size=0.02):
+    def vel(x, t):
+        v_a = cfg_velocity(x, t, condition_a, w, predict_velocity, null_condition)   # far
+        v_b = cfg_velocity(x, t, condition_b, w, predict_velocity, null_condition)   # close
+        return lowpass(v_a) + (v_b - lowpass(v_b))
+    out, _ = euler_sample(noise, 0.0, step_size, vel)
+    return out</code></pre>
+    </details>
+
+    <h4>Skull / waterfall</h4>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/hybrid_0.png" alt="Hybrid of a skull and a waterfall at full size">
+            <p>Full size (close): &ldquo;a lithograph of a waterfall&rdquo;</p>
+        </div>
+        <div class="photo-item" style="flex: 0 0 auto;">
+            <img src="./media/hybrid_0.png" alt="Hybrid of a skull and a waterfall, shrunk" style="width: 64px; margin: 0 auto;">
+            <p>64&times;64 (distant):<br>&ldquo;a lithograph of a skull&rdquo;</p>
+        </div>
+    </div>
+
+    <h4>Cat / forest</h4>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/hybrid_1.png" alt="Hybrid of a cat and a forest at full size">
+            <p>Full size (close): &ldquo;a lithograph of a forest&rdquo;</p>
+        </div>
+        <div class="photo-item" style="flex: 0 0 auto;">
+            <img src="./media/hybrid_1.png" alt="Hybrid of a cat and a forest, shrunk" style="width: 64px; margin: 0 auto;">
+            <p>64&times;64 (distant):<br>&ldquo;a lithograph of a cat&rdquo;</p>
+        </div>
+    </div>
+    <p>Up close, both clearly show the close prompt. The distant prompt is much weaker. Shrunk down, the skull
+       hybrid has a rounded, skull-like outline but none of the details, and in the cat hybrid the two pale tree
+       tops sit where ears would be, but I honestly can't see a cat. The low-pass part only controls coarse
+       shapes, and the close prompt's detail is strong enough that the model draws mostly that subject. Both
+       prompts share the same sepia lithograph style, which at least keeps the two from looking pasted
+       together.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>Thoughts</h2>
+    <p>The biggest takeaway was that the lowest error didn't mean the best image. Euler gave a much sharper,
+       more realistic result than one step, but one step had the lower MSE, because a blurry average is safe
+       under squared error while real but slightly wrong detail gets punished. The editing sections also changed
+       how I think about what the model keeps from an input. It holds on to the layout and colors and then
+       decides for itself what they are, so the panda's eye patches became sunglasses, the apple tree's trunk
+       became legs, and my sideways dog became a person in a sweater. That last one also taught me to check my
+       inputs, since a photo loading sideways was enough to change the results (though it also made for some
+       interesting ones).</p>
+</body>
+</html>

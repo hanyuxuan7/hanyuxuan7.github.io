@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project 4A – Image Warping and Mosaicing</title>
+    <style>
+        body {
+            font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            max-width: 960px;
+            color: #222;
+            line-height: 1.6;
+        }
+        a {
+            color: #2c5aa0;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 28px;
+            margin-top: 30px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            margin-top: 55px;
+        }
+        h3 {
+            font-size: 16px;
+            margin-top: 30px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        h4 {
+            font-size: 14px;
+            margin-top: 22px;
+            margin-bottom: 6px;
+            color: #444;
+        }
+        p {
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        /* single full-width figure with caption */
+        figure {
+            margin: 20px 0;
+            text-align: center;
+        }
+        figure img {
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        figcaption {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #777;
+        }
+        figure.narrow img {
+            max-width: 460px;
+            width: 100%;
+        }
+
+        /* small side-by-side grids */
+        .photo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .photo-item {
+            flex: 1 1 0;
+            min-width: 140px;
+            text-align: center;
+        }
+        .photo-item img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .photo-item p {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: #777;
+        }
+
+        /* formulas */
+        .formula {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 18px;
+            margin: 14px 0;
+            text-align: center;
+            font-family: "Cambria Math", Georgia, serif;
+            font-size: 17px;
+            color: #333;
+        }
+
+        /* collapsible code */
+        details {
+            margin: 14px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        summary {
+            cursor: pointer;
+            color: #2c5aa0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        details[open] summary {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            color: #666;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note-card {
+            background: #f7f7f7;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 14px 0;
+        }
+        .note-card p {
+            margin: 6px 0;
+        }
+        .note-card .label {
+            font-weight: 600;
+            color: #444;
+            font-size: 13px;
+        }
+
+        .summary-card {
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 18px 0;
+        }
+
+    </style>
+</head>
+<body>
+    <a href="../index.html">&larr; Back to main page</a>
+
+    <h1>Project 4A: Image Warping and Mosaicing</h1>
+    <p class="subtitle">Computing homographies by hand, rectifying photos, and stitching overlapping shots into panoramas</p>
+
+    <h2>Overview</h2>
+    <p>If you take two photos from the same spot and only turn the camera, the two images are related by a
+       homography, which is a 3&times;3 projective transform. In this project I computed homographies from clicked point
+       pairs, and wrote my own inverse warping with nearest neighbor and bilinear sampling. 
+       Rectification takes a sign photographed at an angle and makes it look like I shot it head-on.
+       Mosaicing warps neighboring photos into one view and blends them into a single wider image.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>A.1: Shooting the Pictures</h2>
+    <p>For each mosaic I stood in one place and rotated the camera between shots, keeping roughly half of each
+       frame overlapping with the next. The mountain and beach sets are photos I shot, but for the third set I used three
+       photos of a blossom branch from an open source project called OpenPano
+       (https://github.com/ppwwyyxx/OpenPano). All images were downscaled to at most 1200 px on the long side.</p>
+
+    <figure>
+        <img src="./media/mountain_sources.png" alt="Two overlapping photos of a mountain ridge">
+        <figcaption>Set 1: mountains. The ridge on the right of the first shot is on the left of the second.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_sources.png" alt="Two overlapping photos of a beach at golden hour">
+        <figcaption>Set 2: beach at golden hour. Both shots share the large pointed rock.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/flowers_sources.png" alt="Three overlapping photos of a blossom branch">
+        <figcaption>Set 3: blossom branch, 3 pics from left to right. The middle image is the reference. (Internet photos, credited above.)</figcaption>
+    </figure>
+
+    <p>For rectification I used two photos of flat rectangles shot at an angle: a bronze 67 WALL plaque in
+       Manhattan, and a Popup Bagels poster in a shop window.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>A.2: Recovering Homographies</h2>
+    <p>A homography maps a point (x, y) in one image to (x', y') in another:</p>
+    <div class="formula">[ w x', w y', w ]<sup>T</sup> = H [ x, y, 1 ]<sup>T</sup>, &nbsp;&nbsp; h<sub>33</sub> = 1</div>
+    <p>That leaves 8 unknowns. Writing out x' and y' and multiplying through by the denominator turns each
+       correspondence into two equations that are linear in the entries of H:</p>
+    <div class="formula">
+        [ x &nbsp; y &nbsp; 1 &nbsp; 0 &nbsp; 0 &nbsp; 0 &nbsp; &minus;x x' &nbsp; &minus;y x' ] h = x'<br>
+        [ 0 &nbsp; 0 &nbsp; 0 &nbsp; x &nbsp; y &nbsp; 1 &nbsp; &minus;x y' &nbsp; &minus;y y' ] h = y'
+    </div>
+    <p>Four points give exactly 8 equations, but a few pixels of clicking error then throws H way off, so I
+       clicked 10 pairs per image pair and solved the 20&times;8 system with least squares. Before solving I
+       shift and scale each point set so it's centered at the origin with an average distance of &radic;2
+       from it, then undo that afterwards. Without this, the columns of A range from 1 to about 10<sup>6</sup>
+       (the x x' terms), which makes the system badly conditioned.</p>
+
+    <details>
+        <summary>click to show computeH</summary>
+        <pre><code>def computeH(im1_pts, im2_pts, normalize=True):
+    # H maps im1 -> im2
+    p1, p2 = np.asarray(im1_pts, float), np.asarray(im2_pts, float)
+    T1 = _normalizer(p1) if normalize else np.eye(3)
+    T2 = _normalizer(p2) if normalize else np.eye(3)
+    A, b = build_system(apply_H(T1, p1), apply_H(T2, p2))   # 2n x 8, 2n
+    h, *_ = np.linalg.lstsq(A, b, rcond=None)
+    H = np.linalg.inv(T2) @ np.append(h, 1).reshape(3, 3) @ T1
+    return H / H[2, 2]</code></pre>
+    </details>
+
+    <p>I clicked the points with matplotlib's <code>ginput</code>, alternating between the two images, and
+       picked sharp things that don't move. These include rock corners and cracks for the landscapes, branch knots and bud
+       tips for the flowers. I avoided referencing clouds and waves since those changed between shots.</p>
+
+    <figure>
+        <img src="./media/mountain_1_to_0_points.png" alt="Correspondences between the two mountain photos">
+        <figcaption>Mountain correspondences. Matching numbers are the same point.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_1_to_0_points.png" alt="Correspondences between the two beach photos">
+        <figcaption>Beach correspondences, all on rock and cliff.</figcaption>
+    </figure>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/flowers_0_to_1_points.png" alt="Correspondences, left flower image to middle">
+            <p>Flowers, left image &rarr; middle.</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/flowers_2_to_1_points.png" alt="Correspondences, right flower image to middle">
+            <p>Flowers, right image &rarr; middle.</p>
+        </div>
+    </div>
+
+    <h3>Example system and recovered H (mountain pair)</h3>
+    <p>The first four rows of [A | b], two per point:</p>
+    <pre><code>[   194.56   452.51   1     0       0       0    -106598.55  -247931.90 |  547.91 ]
+[     0        0      0   194.56   452.51    1     -88037.85  -204762.56 |  452.51 ]
+[   400.92   509.75   1     0       0       0    -307780.38  -391332.59 |  767.69 ]
+[     0        0      0   400.92   509.75    1    -191616.87  -243634.52 |  477.95 ]</code></pre>
+    <p>The recovered homography:</p>
+    <pre><code>H = [[  0.8347   0.1015  314.7038]
+     [ -0.2422   0.9301   57.4185]
+     [ -0.0002  -0.0000    1.0000]]</code></pre>
+    <p>The bottom row is close to [0, 0, 1], which is what you'd expect for a small camera rotation. The
+       top-left 2&times;2 block is close to a rotation plus a bit of scaling, and the last column is the shift
+       between the two frames.</p>
+
+    <p>To check the clicks, I mapped each point through H and measured how far it landed from its partner:</p>
+    <table>
+        <tr><th>Pair</th><th>Points</th><th>Mean error (px)</th><th>Max error (px)</th></tr>
+        <tr><td>mountain 1 &rarr; 0</td><td>10</td><td>2.31</td><td>7.25</td></tr>
+        <tr><td>beach 1 &rarr; 0</td><td>10</td><td>1.37</td><td>2.35</td></tr>
+        <tr><td>flowers 0 &rarr; 1</td><td>10</td><td>2.88</td><td>5.09</td></tr>
+        <tr><td>flowers 2 &rarr; 1</td><td>10</td><td>2.17</td><td>4.88</td></tr>
+    </table>
+    <p>The beach pair was the cleanest, with every point within about 2 px. The mountain pair has one point
+       that's off by 7 px, showing that I probably misclicked due to the grain in the photo (from my camera recipe) distorting what I saw as granite points. Luckily, the
+       other nine hold it in place, and the ridge still lines up in the mosaic. The flowers have the highest
+       average error. That's likely because the petals are soft and blurry at the edges, and the branch may
+       have moved a little in the wind between shots.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>A.3: Warping the Images</h2>
+    <p>I used inverse warping. First I push the four corners of the input through H to get the bounding box
+       of the output. Then, for every pixel in that box, I apply H<sup>&minus;1</sup> to find where it came from
+       in the source image and sample there. Going backwards means every output pixel gets a value, so there
+       are no holes. Pixels that map outside the source get alpha = 0.</p>
+    <p>The sample location is almost never a whole pixel, so I implemented two ways to read it:</p>
+    <ul>
+        <li><b>Nearest neighbor:</b> round to the closest pixel and copy it.</li>
+        <li><b>Bilinear:</b> blend the 4 surrounding pixels, weighted by how close the sample is to each.</li>
+    </ul>
+    <div class="formula">I(x, y) = (1&minus;a)(1&minus;b) I<sub>00</sub> + a(1&minus;b) I<sub>10</sub> + (1&minus;a) b I<sub>01</sub> + a b I<sub>11</sub></div>
+    <p>where a and b are the fractional parts of x and y. Both are fully vectorized in numpy, with no loops
+       over pixels.</p>
+
+    <details>
+        <summary>click to show warpImageBilinear</summary>
+        <pre><code>def warpImageBilinear(im, H, bbox=None):
+    h, w = im.shape[:2]
+    bbox = warped_bbox(H, im.shape) if bbox is None else bbox
+    sx, sy = _inverse_coords(H, bbox)          # source coords for every output pixel
+    valid = (sx >= 0) & (sx <= w - 1) & (sy >= 0) & (sy <= h - 1)
+    x0 = np.clip(np.floor(sx).astype(int), 0, w - 2)
+    y0 = np.clip(np.floor(sy).astype(int), 0, h - 2)
+    ax, ay = (sx - x0)[..., None], (sy - y0)[..., None]
+    top = (1 - ax) * im[y0, x0]     + ax * im[y0, x0 + 1]
+    bot = (1 - ax) * im[y0 + 1, x0] + ax * im[y0 + 1, x0 + 1]
+    out = (1 - ay) * top + ay * bot
+    out[~valid] = 0
+    return out, valid.astype(float), bbox</code></pre>
+    </details>
+
+    <h3>Rectification</h3>
+    <p>This was a good test before doing mosaics, since there's only one image. I clicked the four corners of
+       the sign and mapped them to a rectangle I defined myself, with the same aspect ratio as the real object
+       (800&times;220 for the plaque, 500&times;600 for the poster).</p>
+
+    <h4>67 WALL plaque</h4>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/rect_wall_input.png" alt="Plaque photo with clicked corners">
+            <p>Input with the 4 clicked corners.</p>
+        </div>
+    </div>
+    <figure>
+        <img src="./media/rect_wall_result.png" alt="Rectified 67 WALL plaque">
+        <figcaption>Left: the whole photo warped. Right: just the plaque, rectified.</figcaption>
+    </figure>
+    <p>The text and the arrow come out level, and the border of the plaque is a proper rectangle. In the full
+       warp, the stone edges around the plaque straighten too, since they lie in the same plane as it.</p>
+
+    <h4>Popup Bagels poster</h4>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/rect_bagel_input.png" alt="Storefront photo with clicked corners on the poster">
+            <p>Input with the 4 clicked corners.</p>
+        </div>
+    </div>
+    <figure>
+        <img src="./media/rect_bagel_result.png" alt="Rectified Popup Bagels poster">
+        <figcaption>Left: area around the poster after warping. Right: the poster rectified.</figcaption>
+    </figure>
+    <p>This one is a much steeper angle, and my first try at warping the whole photo never finished. The far end
+       of the storefront is close to the vanishing line, so when the poster is made flat those pixels get
+       stretched toward infinity and the output would have been about 25,500 &times; 25,500 pixels. In my second try, I capped
+       the output size, so the left image only shows a window around the poster. The window frames and vents
+       around it come out straight, which is a good sign that H is right.</p>
+
+    <h4>Nearest neighbor vs. bilinear</h4>
+    <figure>
+        <img src="./media/rect_bagel_nn_vs_bilinear.png" alt="Zoomed comparison of nearest neighbor and bilinear">
+        <figcaption>Zoomed crop of the rectified poster. Left: nearest neighbor. Right: bilinear.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/rect_wall_nn_vs_bilinear.png" alt="Zoomed comparison on the plaque">
+        <figcaption>Same comparison on the plaque.</figcaption>
+    </figure>
+    <table>
+        <tr><th>Image</th><th>Nearest neighbor</th><th>Bilinear</th></tr>
+        <tr><td>67 WALL (whole photo)</td><td>0.19 s</td><td>0.72 s</td></tr>
+        <tr><td>Popup Bagels (window around poster)</td><td>0.13 s</td><td>0.35 s</td></tr>
+    </table>
+    <p>Nearest neighbor was about 3&ndash;4&times; faster on the plaque and close to 3&times; on the poster, because it reads one pixel instead of four and does
+       no arithmetic. But zoomed in, its edges are jagged staircases, and since the poster gets enlarged a lot,
+       each source pixel turns into a visible block. Bilinear gives smooth edges, at the cost of being slightly
+       soft. I like the results better on bilinear, and it's worth the extra time. Hence, I used it for all the mosaics.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>A.4: Blending Images into a Mosaic</h2>
+    <p>My procedure:</p>
+    <ol>
+        <li>Pick a reference image (the first for the pairs, the middle one for the flowers) and compute H from
+            every other image into it. The reference gets the identity.</li>
+        <li>Push every image's corners through its H and take the union of the boxes to be the mosaic canvas.</li>
+        <li>Warp every image onto that same canvas with bilinear interpolation.</li>
+        <li>Give each image a weight map that's 1 at its center and falls linearly to 0 at its edges, and warp it
+            the same way.</li>
+        <li>Blend.</li>
+    </ol>
+    <p>Pasting one image over the other would leave a hard seam, since the two shots don't have exactly the same
+       exposure. Feathering fixes most of that, with each output pixel being the weighted average of all the images that
+       cover it, so the switch from one image to the next happens gradually across the overlap. The problem is
+       anything that doesn't line up perfectly gets averaged into a faint double, or ghost.</p>
+    <p>So I also did a two-band (2-level Laplacian pyramid) blend. Each warped image is split into a low band
+       (Gaussian blur, &sigma; = 5) and a high band (the image minus its blur). The low bands get feathered so
+       the color and brightness change smoothly. For the high band, each pixel takes the detail from just one
+       image, whichever has the largest weight there, so fine texture never gets doubled.</p>
+
+    <details>
+        <summary>click to show two-band blending</summary>
+        <pre><code>def blend_two_band(warped, weights, sigma=5):
+    W = np.stack(weights)
+    lows, highs = [], []
+    for im, w in zip(warped, weights):
+        m = (w > 0).astype(float)
+        low = _masked_blur(im, m, sigma)      
+        lows.append(low * m[..., None])
+        highs.append((im - low) * m[..., None])
+    low_out = (W[..., None] * np.stack(lows)).sum(0) / np.maximum(W.sum(0), 1e-8)[..., None]
+    winner = np.argmax(W, axis=0)              
+    high_out = np.zeros_like(low_out)
+    for i in range(len(warped)):
+        high_out[winner == i] = highs[i][winner == i]
+    return np.clip(low_out + high_out, 0, 1)</code></pre>
+    </details>
+    <p>One thing to note is that a plain Gaussian blur pulls the black area outside each image into the low
+       band, which leaves dark halos along the edges. I blurred the image times its mask and divide by the blurred
+       mask, so only real pixels are averaged.</p>
+
+    <h3>Mosaic 1: Mountains</h3>
+    <figure>
+        <img src="./media/mountain_blend_comparison.png" alt="Mountain mosaic with three blending methods">
+        <figcaption>No blending, feathering, and two-band blending.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/mountain_mosaic.jpg" alt="Final mountain mosaic">
+        <figcaption>Final mountain mosaic (two-band).</figcaption>
+    </figure>
+    <p>With no blending you can see exactly where the second image starts, as a darker rectangle in the sky.
+       Both blends remove it. The ridge lines up well, which makes sense since the mountain is far away and small
+       hand movements don't cause parallax. The clouds did move between shots, so no blend can make them match
+       exactly. Feathering averages the two versions, which softens the cloud edges in the overlap. Two-band
+       keeps the edges sharp because it takes the detail from only one image.</p>
+
+    <h3>Mosaic 2: Beach</h3>
+    <figure>
+        <img src="./media/beach_blend_comparison.png" alt="Beach mosaic with three blending methods">
+        <figcaption>No blending, feathering, and two-band blending.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_mosaic.jpg" alt="Final beach mosaic">
+        <figcaption>Final beach mosaic (two-band).</figcaption>
+    </figure>
+    <p>I wasn't sure this pair would work at first, since the rock looks bigger in the second shot so I thought I'd walked
+       closer, which would break the homography. It aligned fine in the end, so it was probably just a small zoom
+       difference, which a homography handles. The two shots have quite different color, and the seam is very
+       obvious without blending. Blending smooths it into a gradual shift across the sky. The waves moved
+       between shots, so the foam in the overlap doesn't fully match, but it's hard to notice in water.</p>
+
+    <h3>Mosaic 3: Blossom branch</h3>
+    <figure>
+        <img src="./media/flowers_blend_comparison.png" alt="Flower mosaic with three blending methods">
+        <figcaption>No blending, feathering, and two-band blending.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/flowers_mosaic.jpg" alt="Final flower mosaic">
+        <figcaption>Final three-image mosaic (two-band).</figcaption>
+    </figure>
+    <p>This was the easiest of the three. Almost everything in focus lies along one branch, which is close to a
+       flat plane, so the homographies fit well. The blurred background has no detail, so seams there disappear
+       completely once blended. The two images on the sides were each warped directly into the middle one.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>Thoughts</h2>
+    <p>The thing that surprised me most was how forgiving least squares is with enough points. One of my
+   mountain clicks was off by 7 px, but the other nine kept H in place and the ridge still lined up.
+   Spreading the clicks across the whole overlap mattered more than getting every single one perfect.
+   Furthermore, the bagel poster showed me a real limit of homographies. You can't make one plane look flat without
+   stretching everything near its vanishing line toward infinity. My first attempt tried to warp the
+   whole photo and would have produced an image about 25,500 pixels wide.</p>
+</body>
+</html>

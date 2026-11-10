@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Project 4A – Image Warping and Mosaicing</title>
+    <title>Project 4 – Image Warping and Mosaicing</title>
     <style>
         body {
             font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -190,10 +190,10 @@
 <body>
     <a href="../index.html">&larr; Back to main page</a>
 
-    <h1>Project 4A: Image Warping and Mosaicing</h1>
+    <h1>Project 4: Image Warping and Mosaicing</h1>
     <p class="subtitle">Computing homographies by hand, rectifying photos, and stitching overlapping shots into panoramas</p>
 
-    <h2>Overview</h2>
+    <h2>Part A Overview</h2>
     <p>If you take two photos from the same spot and only turn the camera, the two images are related by a
        homography, which is a 3&times;3 projective transform. In this project I computed homographies from clicked point
        pairs, and wrote my own inverse warping with nearest neighbor and bilinear sampling. 
@@ -481,12 +481,220 @@
 
 
     <!-- ===================================================== -->
-    <h2>Thoughts</h2>
+    <h2>Part A Thoughts</h2>
     <p>The thing that surprised me most was how forgiving least squares is with enough points. One of my
    mountain clicks was off by 7 px, but the other nine kept H in place and the ridge still lined up.
    Spreading the clicks across the whole overlap mattered more than getting every single one perfect.
    Furthermore, the bagel poster showed me a real limit of homographies. You can't make one plane look flat without
    stretching everything near its vanishing line toward infinity. My first attempt tried to warp the
    whole photo and would have produced an image about 25,500 pixels wide.</p>
+
+   
+    <h2>Part B Overview</h2>
+    <p>Clicking points by hand was the slowest and least reliable part of Part A. In Part B the computer finds
+       the correspondences itself, following a simplified version of “Multi-Image Matching using Multi-Scale Oriented Patches” by Brown et al. 
+       The resulting H goes into the same warping and blending code from Part A. I used the same
+       three image sets so I could compare the manual and automatic mosaics.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>B.1: Harris Corners and ANMS</h2>
+    <p>I ran the provided Harris detector on the grayscale image and kept the 5,000 strongest corners. Harris
+       returns (row, col), so I flipped them to (x, y) to match my Part A code.</p>
+    <p>These corners bunch up on textured areas like the granite and leave everything else empty, and ANMS spreads
+       them out. For each corner, r is the distance to the nearest corner that's clearly stronger:</p>
+    <div class="formula">r<sub>i</sub> = min<sub>j</sub> || x<sub>i</sub> &minus; x<sub>j</sub> ||, &nbsp;&nbsp; over j with f(x<sub>i</sub>) &lt; 0.9 &middot; f(x<sub>j</sub>)</div>
+    <p>I kept the 500 corners with the largest r, so a weaker corner still makes it if it's far from anything
+       stronger.</p>
+
+    <details>
+        <summary>click to show ANMS</summary>
+        <pre><code>def anms(xy, strength, n=500, c=0.9, chunk=1000):
+    r = np.full(len(xy), np.inf)
+    for s in range(0, len(xy), chunk):              # chunked to keep memory small
+        d = dist2(xy[s:s + chunk], xy)              # squared distances
+        stronger = strength[s:s + chunk, None] &lt; c * strength[None, :]
+        d[~stronger] = np.inf
+        r[s:s + chunk] = d.min(1)
+    keep = np.argsort(-r)[:n]
+    return xy[keep], strength[keep]</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/mountain_harris_vs_anms.png" alt="Harris corners vs ANMS corners on the mountain">
+        <figcaption>Mountain: 5,000 strongest Harris corners (left) and 500 after ANMS (right).</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_harris_vs_anms.png" alt="Harris corners vs ANMS corners on the beach">
+        <figcaption>Beach: same comparison.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/flowers_harris_vs_anms.png" alt="Harris corners vs ANMS corners on the flowers">
+        <figcaption>Flowers (middle image): same comparison.</figcaption>
+    </figure>
+    <p>After ANMS the corners cover the rocks, cloud edges and shoreline instead of a few dense clumps. Some
+       land on clouds and waves that moved between shots, but RANSAC would process those later.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>B.2: Feature Descriptors</h2>
+    <p>For each corner I take the 40&times;40 window around it, blur it (&sigma; = 2) and sample every 5th pixel
+       to get an 8&times;8 patch. Without the blur, skipping pixels would alias. Then I normalize each patch:</p>
+    <div class="formula">d = (p &minus; mean(p)) / std(p)</div>
+    <p>This makes the descriptor ignore brightness and contrast, which helped on the beach pair since the two
+       shots have different colors.</p>
+
+    <details>
+        <summary>click to show descriptor extraction</summary>
+        <pre><code>OFFS = np.arange(-20, 20, 5) + 2               # -18, -13, ..., 17
+
+def describe(gray, xy):
+    g = gaussian_filter(gray, 2.0)
+    xi, yi = np.rint(xy[:, 0]).astype(int), np.rint(xy[:, 1]).astype(int)
+    patches = g[yi[:, None, None] + OFFS[None, :, None],
+                xi[:, None, None] + OFFS[None, None, :]]      # (n, 8, 8)
+    patches = patches - patches.mean(axis=(1, 2), keepdims=True)
+    patches = patches / (patches.std(axis=(1, 2), keepdims=True) + 1e-8)
+    return patches.reshape(len(xy), -1)                        # (n, 64)</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/descriptors.png" alt="Example 40x40 windows and their 8x8 descriptors">
+        <figcaption>Six corners from the first mountain image. Top: 40&times;40 window. Bottom: the normalized 8&times;8 descriptor.</figcaption>
+    </figure>
+    <figure class="narrow">
+        <img src="./media/descriptor_locations.png" alt="Where the example descriptors come from">
+        <figcaption>Where those six windows are in the image.</figcaption>
+    </figure>
+
+
+    <!-- ===================================================== -->
+    <h2>B.3: Feature Matching</h2>
+    <p>I compute the SSD between every pair of descriptors across the two images. Every feature has a nearest
+       neighbor, so that alone doesn't mean much. Following Lowe, I keep a match only if the best one is much
+       better than the second best:</p>
+    <div class="formula">keep if &nbsp; e<sub>1-NN</sub> / e<sub>2-NN</sub> &lt; 0.5</div>
+    <p>A wrong match usually has several candidates that are about equally close, so its ratio is near 1. I
+       picked 0.5 from Fig. 6b of the paper, using squared errors like the paper does.</p>
+
+    <figure>
+        <img src="./media/mountain_1_to_0_matches.png" alt="Ratio test matches for the mountain pair">
+        <figcaption>Mountain: 144 matches pass the ratio test.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_1_to_0_matches.png" alt="Ratio test matches for the beach pair">
+        <figcaption>Beach: 130 matches.</figcaption>
+    </figure>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/flowers_0_to_1_matches.png" alt="Ratio test matches, left flower image to middle">
+            <p>Flowers, left &rarr; middle: 174 matches.</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/flowers_2_to_1_matches.png" alt="Ratio test matches, right flower image to middle">
+            <p>Flowers, right &rarr; middle: 152 matches.</p>
+        </div>
+    </div>
+    <p>Most of the lines are parallel, which is what you'd expect from a sideways camera turn. A few clearly
+       wrong ones still get through, like the diagonal lines between clouds in the mountain pair.</p>
+
+
+    <!-- ===================================================== -->
+    <h2>B.4: RANSAC and Automatic Mosaics</h2>
+    <p>Since even a few bad matches would throw off a least-squares H, I used 4-point RANSAC:</p>
+    <ol>
+        <li>Pick 4 random matches and compute H from them (my <code>computeH</code> from Part A).</li>
+        <li>Count the inliers, i.e. matches that land within 3 px of their partner under H.</li>
+        <li>Repeat 3,000 times and keep the H with the most inliers.</li>
+        <li>Refit H with least squares on all of those inliers.</li>
+    </ol>
+
+    <details>
+        <summary>click to show RANSAC</summary>
+        <pre><code>def ransac_H(p1, p2, n_iters=3000, eps=3.0, seed=0):
+    rng = np.random.default_rng(seed)
+    best = np.zeros(len(p1), bool)
+    for _ in range(n_iters):
+        idx = rng.choice(len(p1), 4, replace=False)
+        H = computeH(p1[idx], p2[idx])
+        err = np.sqrt(((apply_H(H, p1) - p2) ** 2).sum(1))
+        inliers = err &lt; eps
+        if inliers.sum() &gt; best.sum():
+            best = inliers
+    return computeH(p1[best], p2[best]), best      # refit on all inliers</code></pre>
+    </details>
+
+    <figure>
+        <img src="./media/mountain_1_to_0_ransac.png" alt="RANSAC inliers and outliers for the mountain pair">
+        <figcaption>Mountain: RANSAC inliers (green) and outliers (red).</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_1_to_0_ransac.png" alt="RANSAC inliers and outliers for the beach pair">
+        <figcaption>Beach: inliers (green) and outliers (red).</figcaption>
+    </figure>
+    <div class="photo-row">
+        <div class="photo-item">
+            <img src="./media/flowers_0_to_1_ransac.png" alt="RANSAC result, left flower image to middle">
+            <p>Flowers, left &rarr; middle.</p>
+        </div>
+        <div class="photo-item">
+            <img src="./media/flowers_2_to_1_ransac.png" alt="RANSAC result, right flower image to middle">
+            <p>Flowers, right &rarr; middle.</p>
+        </div>
+    </div>
+
+    <table>
+        <tr><th>Pair</th><th>Ratio-test matches</th><th>RANSAC inliers</th><th>Inlier error (px)</th><th>My Part A clicks under the auto H (px)</th></tr>
+        <tr><td>mountain 1 &rarr; 0</td><td>144</td><td>137</td><td>0.60</td><td>3.03</td></tr>
+        <tr><td>beach 1 &rarr; 0</td><td>130</td><td>118</td><td>0.67</td><td>1.90</td></tr>
+        <tr><td>flowers 0 &rarr; 1</td><td>174</td><td>127</td><td>1.42</td><td>4.43</td></tr>
+        <tr><td>flowers 2 &rarr; 1</td><td>152</td><td>99</td><td>1.19</td><td>3.63</td></tr>
+    </table>
+    <p>Most outliers are on things that changed between shots, such as waves, wet sand on the beach, clouds on the
+       mountain. The flowers lose about 30% of their matches, probably because the petals all look alike and the
+       branch moved a bit. Every pair still keeps around 100 or more inliers, and they fit to under 1.5 px, which
+       is better than my clicks did. The last column shows how far my Part A clicks land under the automatic H.</p>
+
+    <h3>Manual vs. automatic</h3>
+    <p>Both use the same warping and blending, and only H is different.</p>
+    <figure>
+        <img src="./media/mountain_manual_vs_auto.png" alt="Mountain mosaic, manual vs automatic">
+        <figcaption>Mountain: manual (left) vs. automatic (right).</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_manual_vs_auto.png" alt="Beach mosaic, manual vs automatic">
+        <figcaption>Beach: manual (left) vs. automatic (right).</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/flowers_manual_vs_auto.png" alt="Flower mosaic, manual vs automatic">
+        <figcaption>Flowers: manual (left) vs. automatic (right).</figcaption>
+    </figure>
+    <p>To the naked eye the mountain and flower mosaics look basically the same either way. The beach is
+        where the automatic version is visually better. With my clicks, the second shot gets squashed
+        vertically and its right edge slants inward a lot, while the automatic H keeps it much closer to its
+        original shape. I think this is because all my beach clicks were on the rocks in a fairly narrow
+        band, so nothing pinned down the vertical stretch very well.</p>
+
+    <h3>Final automatic mosaics</h3>
+    <figure>
+        <img src="./media/mountain_auto_mosaic.jpg" alt="Automatic mountain mosaic">
+        <figcaption>Mountain, automatic.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/beach_auto_mosaic.jpg" alt="Automatic beach mosaic">
+        <figcaption>Beach, automatic.</figcaption>
+    </figure>
+    <figure>
+        <img src="./media/flowers_auto_mosaic.jpg" alt="Automatic flower mosaic">
+        <figcaption>Flowers, automatic (three images).</figcaption>
+    </figure>
+
+
+    <!-- ===================================================== -->
+    <h2>Part B Thoughts</h2>
+    <p>RANSAC was very interesting to me. The ratio test still let some cloud matches through, and any one of them
+       would have thrown off a least-squares fit. However, RANSAC doesn't need to know which ones are bad and just finds
+       the biggest group that agrees. The automatic results also ended up more accurate than my clicks, with
+       100+ points per pair fitting to around a pixel instead of my 10 hand-picked ones.</p>
 </body>
 </html>
